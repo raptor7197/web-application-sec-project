@@ -1,0 +1,25 @@
+# OWASP ZAP Alert Rules
+# Format: alertId\taction\t(optional)parameter
+# Actions: IGNORE, FAIL, WARN
+# Use IGNORE for known false positives
+
+# 10011 - Cookie Without Secure Flag (expected for localhost HTTP)
+10011	IGNORE	(Cookie Without Secure Flag - expected on localhost)
+
+# 10015 - Incomplete or No Cache-control Header (static dev server)
+10015	IGNORE	(Incomplete or No Cache-control Header - static dev)
+
+# 10054 - Cookie Without SameSite Attribute (expected for localhost)
+10054	IGNORE	(Cookie Without SameSite Attribute - expected on localhost)
+
+# 10049 - Content-Type Header Missing (expected behavior)
+10049	IGNORE	(Content-Type Header Missing)
+
+# 10096 - Timestamp Disclosure (expected in API responses)
+10096	IGNORE	(Timestamp Disclosure - expected in API)
+
+# 10027 - Information Disclosure - Suspicious Comments
+10027	IGNORE	(Suspicious Comments - part of demo app)
+
+# 10094 - Base64 Disclosure (expected in test data)
+10094	IGNORE	(Base64 Disclosure - expected in test data)
