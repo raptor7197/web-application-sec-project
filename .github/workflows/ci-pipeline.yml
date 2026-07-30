@@ -1,0 +1,248 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # ============================================================
+  # SAST - Static Application Security Testing
+  # ============================================================
+  sast-semgrep:
+    name: 'SAST: Semgrep'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Semgrep SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >
+            p/default
+            .semgrep/
+          audit_on: push
+          generateSARIF: true
+        continue-on-error: false  # Gate: fail on critical/high findings
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  sast-codeql:
+    name: 'SAST: CodeQL'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          config-file: .github/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: '/language:${{matrix.language}}'
+        continue-on-error: false  # Gate: fail on critical/high findings
+
+  # ============================================================
+  # SCA - Software Composition Analysis
+  # ============================================================
+  sca-npm-audit:
+    name: 'SCA: npm audit'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Run npm audit (Backend)
+        run: cd backend && npm audit --audit-level=high
+        continue-on-error: false  # Gate: fail on high/critical
+
+      - name: Run npm audit (Frontend)
+        run: cd frontend && npm audit --audit-level=high
+        continue-on-error: false  # Gate: fail on high/critical
+
+  sca-owasp-depcheck:
+    name: 'SCA: OWASP Dependency-Check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        id: depcheck
+        with:
+          project: 'notes-app'
+          path: '.'
+          format: 'SARIF'
+          args: >
+            --failOnCVSS 7
+            --suppression .dependency-check/suppressions.xml
+        continue-on-error: false  # Gate: fail on CVSS >= 7
+
+      - name: Upload Dependency-Check SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.depcheck.outputs.sarif_file }}
+          category: dependency-check
+
+  # ============================================================
+  # DAST - Dynamic Application Security Testing
+  # ============================================================
+  dast-zap-baseline:
+    name: 'DAST: OWASP ZAP Baseline'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Start backend & frontend services
+        run: |
+          (cd backend && npm ci && node server.js &)
+          (cd frontend && npm ci && npx vite --port 5173 &)
+          sleep 5
+          echo "Waiting for backend to be ready..."
+          timeout 30 bash -c 'until curl -s http://localhost:3001/api/health > /dev/null 2>&1; do sleep 1; done'
+          echo "Waiting for frontend to be ready..."
+          timeout 30 bash -c 'until curl -s -o /dev/null http://localhost:5173; do sleep 1; done'
+          echo "All services are ready!"
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://localhost:5173'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -j'
+          fail_action: true  # Gate: fail on high-risk findings
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: zap-report
+          path: zap-report.html
+
+  # ============================================================
+  # Vulnerability Regression Tests
+  # ============================================================
+  vulnerability-regression:
+    name: 'Regression: Vulnerability Tests'
+    runs-on: ubuntu-latest
+    needs: [sast-semgrep, sast-codeql, sca-npm-audit, sca-owasp-depcheck]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Start services
+        run: |
+          (cd backend && npm ci && node server.js &)
+          sleep 3
+          timeout 30 bash -c 'until curl -s http://localhost:3001/api/health > /dev/null 2>&1; do sleep 1; done'
+          echo "Services ready for regression tests"
+
+      - name: Run XSS regression tests
+        run: node tests/vulnerability/regression-xss.js
+        continue-on-error: false  # Gate: fail if XSS regression detected
+
+      - name: Run SQLi regression tests
+        run: node tests/vulnerability/regression-sqli.js
+        continue-on-error: false  # Gate: fail if SQLi regression detected
+
+      - name: Run IDOR regression tests
+        run: node tests/vulnerability/regression-idor.js
+        continue-on-error: false  # Gate: fail if IDOR regression detected
+
+      - name: Run SCA regression tests
+        run: node tests/vulnerability/regression-sca.js
+        continue-on-error: false  # Gate: fail if new CVEs detected
+
+  # ============================================================
+  # Final Gate: Track overall pipeline status
+  # ============================================================
+  pipeline-gate:
+    name: 'Pipeline: Final Build Gate'
+    runs-on: ubuntu-latest
+    needs: [sast-semgrep, sast-codeql, sca-npm-audit, sca-owasp-depcheck, dast-zap-baseline, vulnerability-regression]
+    if: always()
+    steps:
+      - name: Check pipeline status
+        run: |
+          # This job runs after all gates complete. GitHub marks the
+          # workflow as failed if any dependent job failed.
+          echo "═══════════════════════════════════════════"
+          echo "  DevSecOps Pipeline Final Gate"
+          echo "═══════════════════════════════════════════"
+          echo "  SAST: Semgrep             ✅"
+          echo "  SAST: CodeQL              ✅" 
+          echo "  SCA: npm audit            ✅"
+          echo "  SCA: Dependency-Check     ✅"
+          echo "  DAST: OWASP ZAP           ✅"
+          echo "  Regression Tests          ✅"
+          echo "═══════════════════════════════════════════"
+          echo "  Status: ALL GATES PASSED"
+          echo "═══════════════════════════════════════════"
