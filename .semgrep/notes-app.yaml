@@ -1,0 +1,132 @@
+rules:
+  # ============================================================
+  # XSS Detection Rules
+  # ============================================================
+  - id: react-dangerously-set-inner-html
+    pattern: |
+      dangerouslySetInnerHTML={...}
+    message: >
+      XSS VULNERABILITY: Using dangerouslySetInnerHTML renders raw HTML,
+      allowing Cross-Site Scripting (XSS) attacks. User-controlled content
+      rendered this way can execute arbitrary JavaScript.
+    severity: WARNING
+    languages: [javascript, typescript, jsx, tsx]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A7:2017 - XSS"
+      category: security
+
+  - id: react-inner-html-xss
+    pattern-either:
+      - pattern: |
+          {__html: $INPUT}
+      - pattern: |
+          { __html: $INPUT }
+    message: >
+      XSS VULNERABILITY: Direct use of __html prop enables XSS attacks.
+      Sanitize user input before rendering HTML content.
+    severity: WARNING
+    languages: [javascript, typescript, jsx, tsx]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A7:2017 - XSS"
+      category: security
+
+  # ============================================================
+  # SQL Injection Detection Rules
+  # ============================================================
+  - id: sql-concatenation
+    pattern-either:
+      - pattern: |
+          "...%" + $INPUT + "%..."
+      - pattern: |
+          "...%" + $INPUT
+      - pattern: |
+          $INPUT + "%..."
+    message: >
+      SQL INJECTION VULNERABILITY: String concatenation in SQL queries
+      allows attackers to inject arbitrary SQL commands. Use parameterized
+      queries or prepared statements instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A1:2017 - Injection"
+      category: security
+
+  - id: sql-like-concatenation
+    pattern-either:
+      - pattern: |
+          LIKE '%" + $INPUT + "%'
+      - pattern: |
+          LIKE '%" + $INPUT
+      - pattern: |
+          LIKE '" + $INPUT + "%'
+    message: >
+      SQL INJECTION VULNERABILITY: LIKE clause with string concatenation.
+      Use parameterized queries with ? placeholders instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A1:2017 - Injection"
+      category: security
+
+  # ============================================================
+  # Security Misconfiguration Rules
+  # ============================================================
+  - id: disabled-helmet-csp
+    pattern: |
+      contentSecurityPolicy: false
+    message: >
+      SECURITY MISCONFIGURATION: Content Security Policy is disabled.
+      CSP helps prevent XSS attacks by controlling which resources
+      can be loaded and executed.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-693"
+      owasp: "A6:2017 - Security Misconfiguration"
+      category: security
+
+  - id: disabled-xss-filter
+    pattern: |
+      xssFilter: false
+    message: >
+      SECURITY MISCONFIGURATION: XSS filter is disabled.
+      The legacy X-XSS-Protection header provides an additional
+      defense layer against reflected XSS attacks.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-693"
+      owasp: "A6:2017 - Security Misconfiguration"
+      category: security
+
+  # ============================================================
+  # IDOR / Access Control Rules
+  # ============================================================
+  - id: missing-authentication-check
+    pattern-either:
+      - pattern: |
+          router.get('/$ID', ...)
+      - pattern: |
+          router.put('/$ID', ...)
+      - pattern: |
+          router.delete('/$ID', ...)
+      - pattern: |
+          router.get('/$ID/:id', ...)
+      - pattern: |
+          router.put('/$ID/:id', ...)
+      - pattern: |
+          router.delete('/$ID/:id', ...)
+    message: >
+      POTENTIAL IDOR: Route with dynamic parameter might be missing
+      authentication and authorization checks. Ensure that the user
+      has permission to access/modify the requested resource.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A5:2017 - Broken Access Control"
+      category: security

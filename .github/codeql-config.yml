@@ -1,0 +1,23 @@
+name: "CodeQL Security Configuration"
+
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+paths:
+  - backend
+  - frontend
+
+paths-ignore:
+  - node_modules
+  - '**/*.test.js'
+  - '**/*.spec.js'
+  - dist
+  - build
+
+# Custom query filters to reduce noise
+query-filters:
+  - exclude:
+      id: js/angular-html-binding
+  - exclude:
+      id: js/react-no-dangerous-html-with-children

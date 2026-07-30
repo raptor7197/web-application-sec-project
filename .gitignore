@@ -56,4 +56,3 @@ coverage/
 
 # ===== CI Cache =====
 .semgrep_cache/
-.zap/
