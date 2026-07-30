@@ -1,0 +1,59 @@
+# ===== Dependencies =====
+node_modules/
+.pnp
+.pnp.js
+
+# ===== Database =====
+*.db
+*.db-wal
+*.db-shm
+
+# ===== Build Output =====
+dist/
+build/
+.frontend/dist
+
+# ===== Security Scan Reports =====
+*.sarif
+zap-report*.html
+semgrep-report.*
+codeql-report.*
+depcheck-report/
+dependency-check-report/
+
+# ===== CodeQL =====
+codeql-db/
+codeql-database/
+
+# ===== Environment =====
+.env
+.env.local
+.env.*.local
+
+# ===== IDE & Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ===== OS Files =====
+.DS_Store
+Thumbs.db
+
+# ===== Coverage =====
+coverage/
+.nyc_output/
+
+# ===== CI Cache =====
+.semgrep_cache/
+.zap/
