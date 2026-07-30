@@ -1,239 +1,179 @@
-# SAST vs DAST: Comparative Analysis on the Notes App
+# sast vs dast: comparative analysis on the notes app
 
-## Overview
+## overview
 
-This document compares **Static Application Security Testing (SAST)** and **Dynamic Application Security Testing (DAST)** by applying both methodologies to the same intentionally vulnerable notes application. It evaluates coverage, false positive rates, detection capabilities, and practical trade-offs.
-
----
-
-## 1. Tool Configuration
-
-### SAST Tools
-
-| Tool | Approach | Languages | Scan Time |
-|------|----------|-----------|-----------|
-| **Semgrep** | Pattern-based AST matching | JS/TS/JSX | ~2-5 seconds |
-| **CodeQL** | Semantic dataflow analysis (database) | JS/TS | ~30-60 seconds |
-
-### DAST Tool
-
-| Tool | Approach | Target | Scan Time |
-|------|----------|--------|-----------|
-| **OWASP ZAP** | Active/passive HTTP fuzzing | Running web app | ~2-10 minutes |
+this document compares static application security testing (sast) and dynamic application security testing (dast) by applying both methodologies to the same intentionally vulnerable notes application. it evaluates coverage, false positive rates, detection capabilities, and practical trade-offs.
 
 ---
 
-## 2. Vulnerability Detection Matrix
+## 1. tool configuration
 
-| Vulnerability | Semgrep (SAST) | CodeQL (SAST) | ZAP (DAST) | 
+### sast tools
+
+| tool | approach | languages | scan time |
 |---|---|---|---|
-| **XSS via dangerouslySetInnerHTML** | ✅ Detected (pattern match) | ✅ Detected (dataflow) | ⚠️ Partial (reflected only) |
-| **SQL Injection in search** | ✅ Detected (concatenation pattern) | ✅ Detected (taint tracking) | ✅ Confirmed (exploitable) |
-| **IDOR (no auth checks)** | ⚠️ Partial (function-level only) | ⚠️ Partial (heuristic) | ✅ Confirmed (direct access) |
-| **Disabled CSP** | ✅ Detected (config pattern) | ❌ Not detected | ✅ Detected (header analysis) |
-| **Disabled XSS Filter** | ✅ Detected (config pattern) | ❌ Not detected | ✅ Detected (header analysis) |
-| **Outdated dependencies** | ❌ Not applicable | ❌ Not applicable | ❌ Not applicable (SCA covers) |
-| **Server info disclosure** | ❌ Not applicable | ❌ Not applicable | ✅ Detected (banner grabbing) |
-| **Missing cache headers** | ❌ Not applicable | ❌ Not applicable | ✅ Detected (response analysis) |
+| semgrep | pattern-based ast matching | js/ts/jsx | ~2-5 seconds |
+| codeql | semantic dataflow analysis (database) | js/ts | ~30-60 seconds |
+
+### dast tool
+
+| tool | approach | target | scan time |
+|---|---|---|---|
+| owasp zap | active/passive http fuzzing | running web app | ~2-10 minutes |
 
 ---
 
-## 3. Coverage Analysis
+## 2. vulnerability detection matrix
 
-### SAST Coverage
-
-```
-Source Code Coverage (SAST)
-═══════════════════════════════════════════════
-Code Paths:    ████████████████████████████████ 100%
-Config Files:  ████████████████████████████████ 100%
-Dependencies:  ████░░░░░░░░░░░░░░░░░░░░░░░░░░  15% (version only)
-Runtime:       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
-───────────────────────────────────────────────────
-TOTAL:         ████████████████████████████░░░  72%
-```
-
-**Strengths:**
-- Scans ALL code paths, including unreachable/dead code
-- Detects vulnerabilities before code is deployed
-- Catches configuration issues in source files
-- Fast feedback (seconds instead of minutes)
-
-**Weaknesses:**
-- Cannot detect runtime configuration issues
-- Misses environment-specific vulnerabilities
-- Cannot confirm exploitability
-- Higher false positive rate for complex dataflows
-
-### DAST Coverage
-
-```
-Runtime Coverage (DAST)
-═══════════════════════════════════════════════
-Code Paths:    ████████████░░░░░░░░░░░░░░░░░░  45% (reachable only)
-Config Files:  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
-Dependencies:  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0% (SCA covers)
-HTTP/Network:  ████████████████████████████████ 100%
-───────────────────────────────────────────────────
-TOTAL:         ████████████████████░░░░░░░░░░  48%
-```
-
-**Strengths:**
-- Confirms actual exploitability
-- Detects runtime misconfigurations
-- Finds environment-specific issues
-- Lower false positive rate (verified at runtime)
-- Tests the app as users interact with it
-
-**Weaknesses:**
-- Only covers code paths reachable via crawling/spidering
-- Cannot analyze code behind authentication (without session handling)
-- Slower feedback loop
-- May miss vulnerabilities in edge cases
-- Can be destructive (modify/delete data)
+| vulnerability | semgrep (sast) | codeql (sast) | zap (dast) |
+|---|---|---|---|
+| xss via dangerouslysetinnerhtml | detected (pattern match) | detected (dataflow) | partial (reflected only) |
+| sql injection in search | detected (concatenation pattern) | detected (taint tracking) | confirmed (exploitable) |
+| idor (no auth checks) | partial (function-level only) | partial (heuristic) | confirmed (direct access) |
+| disabled csp | detected (config pattern) | not detected | detected (header analysis) |
+| disabled xss filter | detected (config pattern) | not detected | detected (header analysis) |
+| outdated dependencies | not applicable | not applicable | not applicable (sca covers) |
+| server info disclosure | not applicable | not applicable | detected (banner grabbing) |
+| missing cache headers | not applicable | not applicable | detected (response analysis) |
 
 ---
 
-## 4. False Positive Analysis
+## 3. coverage analysis
 
-### SAST False Positives
+### sast coverage
 
-| Finding | Tool | Actual Vulnerability? | False Positive? | Explanation |
-|---------|------|---------------------|-----------------|-------------|
-| `dangerouslySetInnerHTML` | Both | ✅ Yes | ❌ No | Legitimate XSS vector |
-| SQL string concatenation | Both | ✅ Yes | ❌ No | Direct user input in query |
-| Missing auth on routes | Semgrep | ⚠️ Partially | ⚠️ Heuristic | Route exists but no auth middleware (in demo, truly vulnerable) |
-| Missing auth on routes | CodeQL | ❌ No | ✅ Yes (in some contexts) | CodeQL may flag routes that have auth via middleware |
-| Disabled CSP | Semgrep | ✅ Yes | ❌ No | Explicitly disabled |
-| Disabled XSS Filter | Semgrep | ✅ Yes | ❌ No | Explicitly disabled |
+sast scans 100% of code paths including unreachable and dead code. it detects vulnerabilities before code is deployed and catches configuration issues in source files. feedback is fast (seconds instead of minutes). however, sast cannot detect runtime configuration issues, misses environment-specific vulnerabilities, cannot confirm exploitability, and has a higher false positive rate for complex dataflows.
 
-**SAST False Positive Rate (estimated): 15-25%** (higher for complex patterns)
+total coverage estimate: 72%
 
-### DAST False Positives
+### dast coverage
 
-| Finding | Tool | Actual Vulnerability? | False Positive? | Explanation |
-|---------|------|---------------------|-----------------|-------------|
-| Cookie without Secure flag | ZAP | ❌ No | ✅ Yes | Expected on localhost HTTP |
-| Missing Cache-Control header | ZAP | ❌ No | ✅ Yes | Static dev server expected behavior |
-| XSS in search parameter | ZAP | ✅ Yes | ❌ No | Confirmed reflected XSS |
-| SQL error disclosure | ZAP | ✅ Yes | ❌ No | Server error messages leaked |
+dast covers approximately 45% of code paths (only reachable endpoints). it scans 0% of config files and 0% of dependencies (sca covers those). however, it covers 100% of http/network behavior. dast confirms actual exploitability, detects runtime misconfigurations, finds environment-specific issues, and has a lower false positive rate because findings are verified at runtime. however, it only covers code paths reachable via crawling, cannot analyze authenticated code without session handling, provides slower feedback, and can be destructive.
 
-**DAST False Positive Rate (estimated): 30-40%** (mostly low-severity informational alerts)
-
-> **Note:** DAST false positives are typically low-severity "informational" findings (missing headers, cookie flags) rather than false security vulnerability alerts.
+total coverage estimate: 48%
 
 ---
 
-## 5. Combined Results from Notes App Scan
+## 4. false positive analysis
 
-### What Each Tool Found
+### sast false positives
 
-```
-Vulnerabilities Found
-═══════════════════════════════════════════════
+| finding | tool | actual vulnerability? | false positive? | explanation |
+|---|---|---|---|---|
+| dangerouslysetinnerhtml | both | yes | no | legitimate xss vector |
+| sql string concatenation | both | yes | no | direct user input in query |
+| missing auth on routes | semgrep | partially | heuristic | route exists but no auth middleware (in demo, truly vulnerable) |
+| missing auth on routes | codeql | no | yes (in some contexts) | codeql may flag routes that have auth via middleware |
+| disabled csp | semgrep | yes | no | explicitly disabled |
+| disabled xss filter | semgrep | yes | no | explicitly disabled |
 
-XSS via dangerouslySetInnerHTML
-  Semgrep:  ✅ Found (line 18, NoteCard.jsx)
-  CodeQL:   ✅ Found (dataflow: api.js → NoteCard.jsx)
-  ZAP:      ⚠️ Partial (reflected XSS in search only)
+sast false positive rate (estimated): 15-25% (higher for complex patterns)
 
-SQL Injection in search endpoint
-  Semgrep:  ✅ Found (line 6, routes/notes.js)
-  CodeQL:   ✅ Found (taint: req.query → SQL query)
-  ZAP:      ✅ Confirmed (sql_injection_sqli attack)
+### dast false positives
 
-Insecure Direct Object Reference (IDOR)
-  Semgrep:  ⚠️ Heuristic (route without auth middleware)
-  CodeQL:   ⚠️ Heuristic (missing access control predicate)
-  ZAP:      ✅ Confirmed (direct note access by ID)
+| finding | tool | actual vulnerability? | false positive? | explanation |
+|---|---|---|---|---|
+| cookie without secure flag | zap | no | yes | expected on localhost http |
+| missing cache-control header | zap | no | yes | static dev server expected behavior |
+| xss in search parameter | zap | yes | no | confirmed reflected xss |
+| sql error disclosure | zap | yes | no | server error messages leaked |
 
-Security Misconfiguration
-  Semgrep:  ✅ Found (disabled CSP, disabled XSS filter)
-  CodeQL:   ❌ Not detected
-  ZAP:      ✅ Found (missing security headers, CSP issues)
-```
+dast false positive rate (estimated): 30-40% (mostly low-severity informational findings)
 
-### Summary Totals
-
-| Metric | Semgrep | CodeQL | ZAP (DAST) | Combined |
-|--------|---------|--------|------------|----------|
-| **True Positives** | 4 | 3 | 4 | 6 |
-| **False Positives** | 1 | 1 | 2 | 3 |
-| **False Negatives** | 1 | 2 | 1 | 0 |
-| **Precision** | 80% | 75% | 67% | 100% (combined) |
-| **Coverage %** | 72% | 68% | 48% | 92% |
+note: dast false positives are typically low-severity informational findings (missing headers, cookie flags) rather than false security vulnerability alerts.
 
 ---
 
-## 6. Key Findings
+## 5. combined results from notes app scan
 
-### 1. SAST Finds More, DAST Confirms More
+### what each tool found
 
-- **SAST** identified 5 distinct code-level issues (XSS, SQLi, IDOR, CSP, XSS filter)
-- **DAST** confirmed 4 exploitable vulnerabilities and found 2 additional runtime issues
-- Combined approach caught 92% of vulnerabilities vs max 72% for any single tool
+| vulnerability | semgrep | codeql | zap |
+|---|---|---|---|
+| xss via dangerouslysetinnerhtml | found (line 18, notecard.jsx) | found (dataflow: api.js to notecard.jsx) | partial (reflected xss in search only) |
+| sql injection in search endpoint | found (line 6, routes/notes.js) | found (taint: req.query to sql query) | confirmed (sqli attack) |
+| insecure direct object reference (idor) | heuristic (route without auth middleware) | heuristic (missing access control predicate) | confirmed (direct note access by id) |
+| security misconfiguration | found (disabled csp, disabled xss filter) | not detected | found (missing security headers, csp issues) |
 
-### 2. No Single Tool is Sufficient
+### summary totals
 
-| Approach | Coverage | Misses |
-|----------|----------|--------|
-| SAST only | 72% | Runtime config, env issues |
-| DAST only | 48% | Code paths, unreachable code |
-| SAST + DAST | 92% | Dependency CVEs (needs SCA) |
-| SAST + DAST + SCA | 98%+ | Business logic flaws |
-
-### 3. False Positive Management Strategies
-
-**For SAST false positives:**
-- Use Semgrep's `path` filters to exclude test files
-- Configure CodeQL `path-ignore` for generated code
-- Create `.semgrep/.semgrepignore` to exclude directories
-- Triage and mark findings as false positive in GitHub UI
-
-**For DAST false positives:**
-- Use `.zap/rules.tsv` to suppress known false positives (e.g., missing cookie flags on localhost)
-- Configure ZAP context for authenticated scanning
-- Set appropriate alert thresholds
-
-### 4. Regression Test Value
-
-Vulnerability regression tests provide an additional safety net:
-- **XSS tests**: Verify all XSS vectors are sanitized on every commit
-- **SQLi tests**: Ensure no new injection paths are introduced
-- **IDOR tests**: Confirm access controls remain intact
-- **SCA tests**: Block reintroduction of known vulnerable dependencies
+| metric | semgrep | codeql | zap (dast) | combined |
+|---|---|---|---|---|
+| true positives | 4 | 3 | 4 | 6 |
+| false positives | 1 | 1 | 2 | 3 |
+| false negatives | 1 | 2 | 1 | 0 |
+| precision | 80% | 75% | 67% | 100% (combined) |
+| coverage % | 72% | 68% | 48% | 92% |
 
 ---
 
-## 7. Recommendations
+## 6. key findings
 
-| Priority | Action | Tool | When |
-|----------|--------|------|------|
-| 🥇 | **SAST scan on every commit** | Semgrep (fast) + CodeQL (deep) | PR/push |
-| 🥇 | **SCA scan on every commit** | npm audit + Dependency-Check | PR/push |
-| 🥇 | **Gate builds on findings** | Fail on critical/high in all tools | PR/push |
-| 🥈 | **DAST baseline on every commit** | ZAP baseline (quick passive scan) | PR/push |
-| 🥈 | **DAST full scan nightly** | ZAP full scan (deep active scan) | Nightly |
-| 🥉 | **Vulnerability regression tests** | Custom regression test suite | PR/push |
-| 🥉 | **Periodic manual pentest** | Human review | Sprint/release |
+### 1. sast finds more, dast confirms more
+
+sast identified 5 distinct code-level issues (xss, sqli, idor, csp, xss filter). dast confirmed 4 exploitable vulnerabilities and found 2 additional runtime issues. the combined approach caught 92% of vulnerabilities versus a maximum of 72% for any single tool.
+
+### 2. no single tool is sufficient
+
+| approach | coverage | misses |
+|---|---|---|
+| sast only | 72% | runtime config, env issues |
+| dast only | 48% | code paths, unreachable code |
+| sast + dast | 92% | dependency cves (needs sca) |
+| sast + dast + sca | 98%+ | business logic flaws |
+
+### 3. false positive management strategies
+
+for sast false positives:
+- use semgrep's path filters to exclude test files
+- configure codeql path-ignore for generated code
+- create .semgrepignore to exclude directories
+- triage and mark findings as false positive in github ui
+
+for dast false positives:
+- use .zap/rules.tsv to suppress known false positives (e.g., missing cookie flags on localhost)
+- configure zap context for authenticated scanning
+- set appropriate alert thresholds
+
+### 4. regression test value
+
+vulnerability regression tests provide an additional safety net:
+- xss tests: verify all xss vectors are sanitized on every commit
+- sqli tests: ensure no new injection paths are introduced
+- idor tests: confirm access controls remain intact
+- sca tests: block reintroduction of known vulnerable dependencies
 
 ---
 
-## 8. Conclusion
+## 7. recommendations
 
-**SAST and DAST are complementary, not competitive.**
-
-- **SAST** provides broad, early detection of code-level vulnerabilities
-- **DAST** provides runtime confirmation and catches deployment/environment issues
-- **SCA** fills the critical gap of dependency vulnerabilities
-- **Vulnerability regression tests** ensure fixes remain fixed
-
-When combined with build gating, this DevSecOps pipeline ensures:
-1. ✅ Vulnerabilities are detected **before** they reach production
-2. ✅ Previously fixed bugs **stay fixed** (regression prevention)
-3. ✅ Developers get **immediate feedback** on security issues
-4. ✅ Security posture **improves over time** rather than degrading
+| priority | action | tool | when |
+|---|---|---|---|
+| 1 | sast scan on every commit | semgrep (fast) + codeql (deep) | pr/push |
+| 1 | sca scan on every commit | npm audit + dependency-check | pr/push |
+| 1 | gate builds on findings | fail on critical/high in all tools | pr/push |
+| 2 | dast baseline on every commit | zap baseline (quick passive scan) | pr/push |
+| 2 | dast full scan nightly | zap full scan (deep active scan) | nightly |
+| 3 | vulnerability regression tests | custom regression test suite | pr/push |
+| 3 | periodic manual pentest | human review | sprint/release |
 
 ---
 
-*Generated for the DevSecOps Pipeline Demo Project*
+## 8. conclusion
+
+sast and dast are complementary, not competitive.
+
+- sast provides broad, early detection of code-level vulnerabilities
+- dast provides runtime confirmation and catches deployment/environment issues
+- sca fills the critical gap of dependency vulnerabilities
+- vulnerability regression tests ensure fixes remain fixed
+
+when combined with build gating, this devsecops pipeline ensures:
+- vulnerabilities are detected before they reach production
+- previously fixed bugs stay fixed (regression prevention)
+- developers get immediate feedback on security issues
+- security posture improves over time rather than degrading
+
+---
+
+*generated for the devsecops pipeline demo project*
