@@ -1,0 +1,18 @@
+{
+  "name": "notes-app-backend",
+  "version": "1.0.0",
+  "description": "Vulnerable notes app API for DevSecOps demonstration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "4.17.1",
+    "better-sqlite3": "11.7.0",
+    "cors": "2.8.5",
+    "lodash": "4.17.20",
+    "morgan": "1.10.0",
+    "helmet": "4.6.0"
+  }
+}
