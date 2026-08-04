@@ -32,7 +32,7 @@ jobs:
           echo "Services ready"
 
       - name: OWASP ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.14.0
+        uses: zaproxy/action-full-scan@v0.14.1
         with:
           target: 'http://localhost:5173'
           rules_file_name: '.zap/rules.tsv'
@@ -46,7 +46,7 @@ jobs:
 
       - name: Upload ZAP Full Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nightly-zap-full-report
           path: zap-report.html
