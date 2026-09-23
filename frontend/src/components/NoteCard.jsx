@@ -25,8 +25,8 @@ export default function NoteCard({ note, onDelete }) {
         <h3 className="note-title">{note.title}</h3>
         <div className="note-card-actions">
           <span className="note-id">#{note.id}</span>
-          <button className="btn-icon btn-delete" onClick={handleDelete} title="Delete note">
-            🗑️
+          <button className="btn-icon btn-delete" onClick={handleDelete} title="Delete note" aria-label="Delete note">
+            Delete
           </button>
         </div>
       </div>

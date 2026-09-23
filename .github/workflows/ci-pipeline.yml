@@ -18,21 +18,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pipx install semgrep
 
       - name: Run Semgrep SAST Scan
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >
-            p/default
-            .semgrep/
-          audit_on: push
-          generateSARIF: true
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config .semgrep/ \
+            --sarif --output semgrep.sarif \
+            --metrics=off
         continue-on-error: false  # Gate: fail on critical/high findings
 
       - name: Upload Semgrep SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -52,20 +54,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
           config-file: .github/codeql-config.yml
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: '/language:${{matrix.language}}'
         continue-on-error: false  # Gate: fail on critical/high findings
@@ -78,10 +80,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -103,16 +105,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '11'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -135,9 +137,9 @@ jobs:
 
       - name: Upload Dependency-Check SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ steps.depcheck.outputs.sarif_file }}
+          sarif_file: reports/dependency-check-report.sarif
           category: dependency-check
 
   # ============================================================
@@ -148,10 +150,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -167,7 +169,7 @@ jobs:
           echo "All services are ready!"
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://localhost:5173'
           rules_file_name: '.zap/rules.tsv'
@@ -177,7 +179,7 @@ jobs:
 
       - name: Upload ZAP Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: zap-report
           path: zap-report.html
@@ -191,10 +193,10 @@ jobs:
     needs: [sast-semgrep, sast-codeql, sca-npm-audit, sca-owasp-depcheck]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 

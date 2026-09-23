@@ -41,10 +41,10 @@ export default function NoteForm({ onSubmit }) {
             rows={4}
           />
           <div className="form-hint">
-            💡 HTML content will be rendered as-is (XSS vulnerability)
+            Note: HTML content will be rendered as-is (XSS vulnerability)
           </div>
           <button type="submit" className="btn btn-primary btn-submit">
-            ✨ Create Note
+            Create Note
           </button>
         </form>
       )}

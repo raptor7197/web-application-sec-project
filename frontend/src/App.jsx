@@ -69,14 +69,13 @@ export default function App() {
       <header className="app-header">
         <div className="header-content">
           <h1>
-            <span className="logo-icon">📝</span>
-            SecureNotes
+            Vulnerable Notes
           </h1>
-          <p className="subtitle">DevSecOps Pipeline Demo — Notes Application</p>
+          <p className="subtitle">DevSecOps Pipeline Demo - Notes Application</p>
           <div className="scan-badges">
-            <span className="badge badge-sast">🔍 SAST</span>
-            <span className="badge badge-dast">🌐 DAST</span>
-            <span className="badge badge-sca">📦 SCA</span>
+            <span className="badge badge-sast">SAST</span>
+            <span className="badge badge-dast">DAST</span>
+            <span className="badge badge-sca">SCA</span>
           </div>
         </div>
       </header>
@@ -84,7 +83,7 @@ export default function App() {
       <main className="app-main">
         {error && (
           <div className="error-banner">
-            <span>⚠️</span> {error}
+            {error}
             <button onClick={() => setError(null)} className="dismiss-btn">×</button>
           </div>
         )}
@@ -94,7 +93,7 @@ export default function App() {
             <NoteForm onSubmit={handleCreate} />
 
             <div className="search-section">
-              <h3>🔎 Search Notes</h3>
+              <h3>Search Notes</h3>
               <form onSubmit={handleSearch}>
                 <div className="search-input-group">
                   <input
@@ -118,7 +117,7 @@ export default function App() {
             </div>
 
             <div className="info-panel">
-              <h3>ℹ️ About This Demo</h3>
+              <h3>About This Demo</h3>
               <ul>
                 <li>This app contains <strong>intentional vulnerabilities</strong></li>
                 <li>Renders note content as raw HTML (XSS)</li>

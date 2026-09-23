@@ -1,27 +1,27 @@
 /* ===== CSS Variables & Theme ===== */
 :root {
-  --bg-primary: #0f1117;
-  --bg-secondary: #1a1d27;
-  --bg-card: #222640;
-  --bg-input: #2a2d3e;
-  --bg-hover: #2d3150;
-  --border-color: #373b5e;
-  --border-focus: #6c72cb;
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0b5;
-  --text-muted: #6b7294;
-  --accent-sast: #4fc3f7;
-  --accent-dast: #ffb74d;
-  --accent-sca: #81c784;
-  --accent-primary: #7c83e6;
-  --accent-danger: #ef5350;
-  --accent-success: #66bb6a;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --transition: 0.2s ease;
+  --bg-primary: #0e0f11;
+  --bg-secondary: #16181b;
+  --bg-card: #1e2024;
+  --bg-input: #24262a;
+  --bg-hover: #2a2c31;
+  --border-color: #34373c;
+  --border-focus: #e23636;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a3a6ad;
+  --text-muted: #6f7278;
+  --accent-sast: #c9ccd2;
+  --accent-dast: #c9ccd2;
+  --accent-sca: #c9ccd2;
+  --accent-primary: #e23636;
+  --accent-danger: #e23636;
+  --accent-success: #9aa5a0;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --transition: 0.15s ease;
 }
 
 /* ===== Reset & Base ===== */
@@ -32,7 +32,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
@@ -47,13 +47,12 @@ body {
 }
 
 .app-header {
-  background: linear-gradient(135deg, #1a1d27 0%, #222640 50%, #1a1d27 100%);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--accent-primary);
   padding: 1.5rem 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(12px);
 }
 
 .header-content {
@@ -68,18 +67,16 @@ body {
 .header-content h1 {
   font-size: 1.6rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-primary), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: var(--accent-primary);
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
+  background-clip: initial;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.logo-icon {
-  font-size: 1.8rem;
-  -webkit-text-fill-color: initial;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .subtitle {
@@ -213,7 +210,7 @@ body {
 .form-textarea:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(108, 114, 203, 0.2);
+  box-shadow: 0 0 0 3px rgba(226, 54, 54, 0.2);
 }
 
 .form-textarea {
@@ -224,7 +221,6 @@ body {
 .form-hint {
   font-size: 0.75rem;
   color: var(--text-muted);
-  font-style: italic;
 }
 
 /* ===== Search Section ===== */
@@ -284,7 +280,7 @@ body {
 }
 
 .btn-link:hover {
-  color: #a78bfa;
+  color: #ff5252;
 }
 
 /* ===== Info Panel ===== */
@@ -422,7 +418,7 @@ body {
 .note-id {
   font-size: 0.7rem;
   color: var(--text-muted);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: 'SF Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
   background: var(--bg-input);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
@@ -432,11 +428,15 @@ body {
   background: none;
   border: 1px solid transparent;
   cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.4rem;
   border-radius: var(--radius-sm);
   transition: all var(--transition);
-  opacity: 0.6;
+  opacity: 0.7;
   line-height: 1;
 }
 
@@ -485,7 +485,7 @@ body {
 }
 
 .raw-content {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: 'SF Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
   font-size: 0.75rem;
   background: var(--bg-primary);
   padding: 0.15rem 0.4rem;
@@ -523,11 +523,6 @@ body {
   color: var(--text-muted);
 }
 
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
-
 .empty-state h3 {
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
@@ -551,9 +546,9 @@ body {
 }
 
 .btn-primary:hover {
-  background: #6a72d4;
+  background: #c92f2f;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 131, 230, 0.3);
+  box-shadow: 0 4px 12px rgba(226, 54, 54, 0.25);
 }
 
 .btn-primary:active {
@@ -595,7 +590,7 @@ body {
 .footer-tech {
   font-size: 0.7rem;
   margin-top: 0.25rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: 'SF Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
   color: var(--text-muted);
   opacity: 0.7;
 }

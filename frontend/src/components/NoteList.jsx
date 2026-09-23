@@ -16,13 +16,11 @@ export default function NoteList({ notes, loading, onDelete, isSearchResult }) {
       <div className="empty-state">
         {isSearchResult ? (
           <>
-            <span className="empty-icon">🔍</span>
             <h3>No results found</h3>
             <p>Try a different search query</p>
           </>
         ) : (
           <>
-            <span className="empty-icon">📝</span>
             <h3>No notes yet</h3>
             <p>Create your first note to get started</p>
           </>
