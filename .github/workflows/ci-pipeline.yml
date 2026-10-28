@@ -145,6 +145,35 @@ jobs:
           category: dependency-check
 
   # ============================================================
+  # SECRETS - Hardcoded Secret Scanning
+  # ============================================================
+  secrets-gitleaks:
+    name: 'SECRETS: Gitleaks'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gitleaks scans git history, not just the working tree
+
+      - name: Install gitleaks binary
+        run: |
+          curl -sSL \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
+          ./gitleaks version
+
+      - name: Run gitleaks secret scan
+        run: |
+          ./gitleaks detect \
+            --source . \
+            --config .gitleaks/gitleaks.toml \
+            --redact \
+            --verbose
+        continue-on-error: false  # Gate: fail on any hardcoded secret (incl. the seeded demo credentials)
+
+  # ============================================================
   # DAST - Dynamic Application Security Testing
   # ============================================================
   dast-zap-baseline:
@@ -231,7 +260,7 @@ jobs:
   pipeline-gate:
     name: 'Pipeline: Final Build Gate'
     runs-on: ubuntu-latest
-    needs: [sast-semgrep, sast-codeql, sca-npm-audit, sca-owasp-depcheck, dast-zap-baseline, vulnerability-regression]
+    needs: [sast-semgrep, sast-codeql, sca-npm-audit, sca-owasp-depcheck, secrets-gitleaks, dast-zap-baseline, vulnerability-regression]
     if: always()
     steps:
       - name: Check pipeline status
@@ -242,9 +271,10 @@ jobs:
           echo "  DevSecOps Pipeline Final Gate"
           echo "═══════════════════════════════════════════"
           echo "  SAST: Semgrep             ✅"
-          echo "  SAST: CodeQL              ✅" 
+          echo "  SAST: CodeQL              ✅"
           echo "  SCA: npm audit            ✅"
           echo "  SCA: Dependency-Check     ✅"
+          echo "  SECRETS: Gitleaks         ✅"
           echo "  DAST: OWASP ZAP           ✅"
           echo "  Regression Tests          ✅"
           echo "═══════════════════════════════════════════"

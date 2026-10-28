@@ -1,0 +1,8 @@
+# Gitleaks configuration for the DevSecOps demo pipeline.
+# Extends gitleaks default ruleset. Nothing is allowlisted: the demo
+# intentionally seeds fake credentials so the secrets-scanning gate can
+# demonstrate detection on every run (same philosophy as the SAST/DAST/SCA
+# gates that also fail on the deliberately vulnerable code).
+
+[extend]
+useDefault = true

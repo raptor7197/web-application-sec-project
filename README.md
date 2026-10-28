@@ -50,6 +50,7 @@ web-app-sec-project/
 ├── scripts/                    # 5 ci/cd helper scripts
 ├── .semgrep/                   # custom sast rules for xss, sqli, idor, misconfig
 ├── .zap/                       # owasp zap false positive suppression
+├── .gitleaks/                  # secrets scanning config (gitleaks)
 ├── .dependency-check/          # dependency-check suppression rules
 ├── docs/                       # deepdive + sast vs dast comparison
 └── README.md                   # this file
@@ -68,6 +69,7 @@ this project contains a deliberately vulnerable notes application and a ci/cd pi
 | cross-site scripting (xss) | frontend notecard.jsx | note content rendered via dangerouslysetinnerhtml |
 | sql injection (sqli) | backend routes/notes.js | user input concatenated into sql query |
 | insecure direct object reference (idor) | backend routes/notes.js | no authentication on any endpoint |
+| hardcoded credentials | backend/seeded-secret.env | fabricated aws/slack keys for gitleaks detection demo |
 | security misconfiguration | backend server.js | helmet csp and xss filter disabled |
 | outdated dependencies | package.json files | express@4.17.1, lodash@4.17.20, axios@0.21.1 |
 
@@ -79,6 +81,7 @@ this project contains a deliberately vulnerable notes application and a ci/cd pi
 | codeql | sast | semantic dataflow analysis | fails on critical/high |
 | npm audit | sca | npm dependency audit | fails on critical/high |
 | owasp dependency-check | sca | comprehensive dep scan | fails on cvss >= 7 |
+| gitleaks | secrets scanning | scans git history and tree for leaked secrets | fails on any secret found |
 | owasp zap baseline | dast | passive runtime scanning | fails on high-risk alerts |
 
 ### build gates
@@ -87,8 +90,9 @@ every check must pass before a pull request can be merged. the pipeline runs in 
 
 1. **sast stage** (parallel): semgrep + codeql scan source code
 2. **sca stage** (parallel): npm audit + dependency-check scan dependencies
-3. **dast stage**: owasp zap baseline scan against running application
-4. **regression stage**: 4 vulnerability regression test suites run sequentially
+3. **secrets stage** (parallel): gitleaks scans git history for hardcoded secrets
+4. **dast stage**: owasp zap baseline scan against running application
+5. **regression stage**: 4 vulnerability regression test suites run sequentially
 
 ---
 
@@ -132,6 +136,9 @@ cd frontend && npm audit
 # sca with dependency-check (requires java)
 dependency-check --scan . --format HTML --out dep-report.html
 
+# secrets scanning with gitleaks
+bash scripts/run-secrets.sh
+
 # dast with zap (requires docker)
 bash scripts/run-dast.sh
 
@@ -145,6 +152,7 @@ bash scripts/run-vulnerability-regression.sh
 bash scripts/start-services.sh
 bash scripts/run-sast.sh
 bash scripts/run-sca.sh
+bash scripts/run-secrets.sh
 bash scripts/run-dast.sh
 bash scripts/run-vulnerability-regression.sh
 ```
@@ -161,10 +169,11 @@ runs on every push and pull request:
 3. sast: codeql analysis
 4. sca: npm audit
 5. sca: owasp dependency-check
-6. start services
-7. dast: zap baseline scan
-8. vulnerability regression tests
-9. final build gate
+6. secrets: gitleaks history scan
+7. start services
+8. dast: zap baseline scan
+9. vulnerability regression tests
+10. final build gate
 
 ### nightly pipeline (`.github/workflows/nightly-dast.yml`)
 
@@ -192,6 +201,7 @@ runs daily at 2:00 am utc:
 - **zap baseline on pr, full scan nightly** as standard ci/cd practice
 - **semgrep + codeql together** for both fast feedback and deep analysis
 - **vulnerability regression tests** as a second defense layer after sast/dast/sca
+- **fabricated credentials seeded in the repo** so the gitleaks gate always demonstrates real detection
 - **express@4.17.1 and lodash@4.17.20 intentionally kept old** for sca tool detection
 
 ---

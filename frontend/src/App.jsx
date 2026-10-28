@@ -76,6 +76,7 @@ export default function App() {
             <span className="badge badge-sast">SAST</span>
             <span className="badge badge-dast">DAST</span>
             <span className="badge badge-sca">SCA</span>
+            <span className="badge badge-secrets">SECRETS</span>
           </div>
         </div>
       </header>
@@ -123,6 +124,7 @@ export default function App() {
                 <li>Renders note content as raw HTML (XSS)</li>
                 <li>Search uses string concatenation (SQLi)</li>
                 <li>No authentication on any endpoint (IDOR)</li>
+                <li>Fabricated credentials seeded in backend (gitleaks demo)</li>
               </ul>
             </div>
           </div>
@@ -159,7 +161,7 @@ export default function App() {
         <div className="footer-content">
           <p>DevSecOps Pipeline Demo — Intentionally Vulnerable for Educational Purposes</p>
           <p className="footer-tech">
-            Built with React + Vite · Express + SQLite · Semgrep · CodeQL · OWASP ZAP · npm audit · OWASP Dependency-Check
+            Built with React + Vite · Express + SQLite · Semgrep · CodeQL · npm audit · OWASP Dependency-Check · Gitleaks · OWASP ZAP
           </p>
         </div>
       </footer>
