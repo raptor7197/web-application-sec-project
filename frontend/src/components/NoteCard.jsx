@@ -2,49 +2,27 @@ import React, { useState } from 'react';
 
 export default function NoteCard({ note, onDelete }) {
   const [expanded, setExpanded] = useState(false);
+  const date = note.created_at ? new Date(`${note.created_at.replace(' ', 'T')}Z`) : null;
+  const formattedDate = date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    : 'Date unknown';
 
-  const handleDelete = (e) => {
-    e.stopPropagation();
-    if (window.confirm('Delete this note?')) {
-      onDelete(note.id);
-    }
-  };
-
-  // UNSAFE: Intentionally uses dangerouslySetInnerHTML to render raw HTML
-  // This is the XSS vulnerability that SAST/DAST tools should detect
-  const renderContent = () => {
-    return { __html: note.content };
+  const handleDelete = (event) => {
+    event.stopPropagation();
+    if (window.confirm(`Delete “${note.title}”? This cannot be undone.`)) onDelete(note.id);
   };
 
   return (
-    <div
-      className={`note-card ${expanded ? 'expanded' : ''}`}
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="note-card-header">
-        <h3 className="note-title">{note.title}</h3>
-        <div className="note-card-actions">
-          <span className="note-id">#{note.id}</span>
-          <button className="btn-icon btn-delete" onClick={handleDelete} title="Delete note" aria-label="Delete note">
-            Delete
-          </button>
-        </div>
+    <article className={`note-card ${expanded ? 'expanded' : ''}`}>
+      <div className="note-card-top"><span className="note-number">NOTE / {String(note.id).padStart(3, '0')}</span><span className="note-date">{formattedDate}</span></div>
+      <h3>{note.title}</h3>
+      {/* Intentionally unsafe: XSS is an explicit lab exercise. */}
+      <div className="note-content" dangerouslySetInnerHTML={{ __html: note.content }} />
+      {expanded && <div className="note-meta"><span>RAW CONTENT</span><code>{note.content}</code></div>}
+      <div className="note-card-bottom">
+        <button type="button" className="details-button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Hide source' : 'View source'} <span aria-hidden="true">{expanded ? '−' : '↗'}</span></button>
+        <button type="button" className="delete-button" onClick={handleDelete} aria-label={`Delete ${note.title}`}>Delete</button>
       </div>
-
-      <div className="note-content" dangerouslySetInnerHTML={renderContent()} />
-
-      {expanded && (
-        <div className="note-meta">
-          <div className="meta-row">
-            <span className="meta-label">Created:</span>
-            <span>{note.created_at}</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">Raw content:</span>
-            <code className="raw-content">{note.content}</code>
-          </div>
-        </div>
-      )}
-    </div>
+    </article>
   );
 }

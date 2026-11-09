@@ -264,19 +264,19 @@ jobs:
     if: always()
     steps:
       - name: Check pipeline status
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
-          # This job runs after all gates complete. GitHub marks the
-          # workflow as failed if any dependent job failed.
-          echo "═══════════════════════════════════════════"
-          echo "  DevSecOps Pipeline Final Gate"
-          echo "═══════════════════════════════════════════"
-          echo "  SAST: Semgrep             ✅"
-          echo "  SAST: CodeQL              ✅"
-          echo "  SCA: npm audit            ✅"
-          echo "  SCA: Dependency-Check     ✅"
-          echo "  SECRETS: Gitleaks         ✅"
-          echo "  DAST: OWASP ZAP           ✅"
-          echo "  Regression Tests          ✅"
-          echo "═══════════════════════════════════════════"
-          echo "  Status: ALL GATES PASSED"
-          echo "═══════════════════════════════════════════"
+          node -e '
+            const jobs = JSON.parse(process.env.NEEDS_JSON);
+            for (const [name, job] of Object.entries(jobs)) {
+              console.log(`${name}: ${job.result}`);
+            }
+            const blocked = Object.entries(jobs).filter(([, job]) => job.result !== "success");
+            if (blocked.length) {
+              console.error(`Build gate failed: ${blocked.length} job(s) failed, cancelled or skipped.`);
+              process.exitCode = 1;
+            } else {
+              console.log("Build gate passed: all required jobs succeeded.");
+            }
+          '

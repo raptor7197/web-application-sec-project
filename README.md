@@ -1,211 +1,90 @@
-# devsecops pipeline for web application security
+# Faultline Lab
 
-a complete devsecops pipeline demonstrating automated security testing for a web application. every commit is automatically checked for vulnerabilities before release. integrates sast, dast, and sca scanning into a github actions ci/cd pipeline with build gating and vulnerability regression tests.
+A hands-on DevSecOps testbed: a deliberately vulnerable notes application plus a GitHub Actions pipeline for finding its flaws. The app is a teaching target, **not** a secure note-taking service. Run it on localhost with disposable data only.
 
----
+## At a glance
 
-## architecture
+| Layer | Implementation | What it demonstrates |
+| --- | --- | --- |
+| UI | React 17, Vite | Note creation, browsing, search and raw-HTML rendering |
+| API | Express 4, better-sqlite3 | CRUD and an injectable search endpoint |
+| Security pipeline | Semgrep, CodeQL, npm audit, Dependency-Check, Gitleaks, OWASP ZAP | Static, dependency, secret and runtime checks |
+| Exercises | `tests/vulnerability/` | XSS, SQLi, IDOR and dependency regression scripts |
+
+## Architecture
 
 ```mermaid
-graph tb
-    subgraph developer["developer workflow"]
-        direction LR
-        a1[code commit] --> a2[push to github]
-        a2 --> a3[open pull request]
+flowchart LR
+    Dev[Developer push or pull request] --> Actions[GitHub Actions]
+    subgraph CI[Parallel security jobs]
+      SAST[Semgrep and CodeQL]
+      SCA[npm audit and Dependency-Check]
+      Secrets[Gitleaks]
+      DAST[ZAP baseline]
     end
-
-    subgraph cicd["github actions ci/cd pipeline"]
-        direction TB
-        b1[trigger: push / pull request]
-        b1 --> b2[install dependencies]
-        b2 --> b3{sast}
-        b2 --> b4{sca}
-        b3 --> b7[parallel execution]
-        b4 --> b7
-        b7 --> b8[start services]
-        b8 --> b9{dast}
-        b9 --> b10[vulnerability regression tests]
-        b10 --> b11[build gate: pass / fail]
+    Actions --> SAST & SCA & Secrets & DAST
+    SAST & SCA --> Regression[Vulnerability regression scripts]
+    SAST & SCA & Secrets & DAST & Regression --> Gate[Final gate checks job results]
+    subgraph App[Local application under test]
+      Browser[React and Vite :5173] -->|/api proxy| API[Express :3001]
+      API --> DB[(SQLite notes.db)]
     end
-
-    subgraph target["target application"]
-        c1[frontend: react + vite] -->|http proxy| c2[backend: express + sqlite]
-        c2 --> c3[(sqlite database)]
-    end
-
-    developer --> cicd
-    cicd --> target
+    DAST -. scans .-> Browser
+    Regression -. exercises .-> API
 ```
 
----
+The regression job waits for SAST and SCA; DAST and Gitleaks run independently. The final gate fails if any required job fails, is cancelled or is skipped. This repository intentionally contains findings, so a failing security job can be the expected observation—not proof of a broken CI runner. A successful job is **not** a clean security bill: CodeQL uploads findings without failing the analysis job solely because alerts exist, and the current Semgrep command does not enable findings-as-errors.
 
-## project structure
+## Vulnerabilities by design
 
-```
-web-app-sec-project/
-├── frontend/                   # react + vite notes app (with xss vuln)
-├── backend/                    # express + better-sqlite3 api (with sqli + idor)
-├── .github/workflows/          # ci-pipeline.yml + nightly-dast.yml
-├── tests/vulnerability/        # 4 vulnerability regression test suites
-├── scripts/                    # 5 ci/cd helper scripts
-├── .semgrep/                   # custom sast rules for xss, sqli, idor, misconfig
-├── .zap/                       # owasp zap false positive suppression
-├── .gitleaks/                  # secrets scanning config (gitleaks)
-├── .dependency-check/          # dependency-check suppression rules
-├── docs/                       # deepdive + sast vs dast comparison
-└── README.md                   # this file
-```
+| Surface | Location | Exercise |
+| --- | --- | --- |
+| XSS | `frontend/src/components/NoteCard.jsx` | Raw note HTML is rendered with `dangerouslySetInnerHTML`. |
+| SQL injection | `backend/routes/notes.js` (`GET /api/notes/search`) | The query string is concatenated into SQL. |
+| Missing authorization / IDOR | `backend/routes/notes.js` | Note endpoints require no login or ownership check. |
+| Weak browser policy | `backend/server.js` | Helmet CSP and XSS filter are disabled. |
+| Seeded secret specimens | `backend/seeded-secret.env` | Synthetic values for secret-scan exercises; do not replace with live credentials. |
+| Dependency findings | `frontend/` and `backend/` lockfiles | SCA tools audit the actual resolved dependency trees. |
 
----
+**Do not deploy this app on a public network.** Do not enter real secrets, use real accounts, or test against a service you do not own. The landing page's scanner cards describe CI configuration, not live results.
 
-## what is demonstrated
+## Run locally
 
-this project contains a deliberately vulnerable notes application and a ci/cd pipeline that scans every commit for security issues.
-
-### intentional vulnerabilities
-
-| vulnerability | location | how it works |
-|---|---|---|
-| cross-site scripting (xss) | frontend notecard.jsx | note content rendered via dangerouslysetinnerhtml |
-| sql injection (sqli) | backend routes/notes.js | user input concatenated into sql query |
-| insecure direct object reference (idor) | backend routes/notes.js | no authentication on any endpoint |
-| hardcoded credentials | backend/seeded-secret.env | fabricated aws/slack keys for gitleaks detection demo |
-| security misconfiguration | backend server.js | helmet csp and xss filter disabled |
-| outdated dependencies | package.json files | express@4.17.1, lodash@4.17.20, axios@0.21.1 |
-
-### security scanning tools
-
-| tool | category | what it does | build gate |
-|---|---|---|---|
-| semgrep | sast | pattern-based static analysis | fails on critical/high |
-| codeql | sast | semantic dataflow analysis | fails on critical/high |
-| npm audit | sca | npm dependency audit | fails on critical/high |
-| owasp dependency-check | sca | comprehensive dep scan | fails on cvss >= 7 |
-| gitleaks | secrets scanning | scans git history and tree for leaked secrets | fails on any secret found |
-| owasp zap baseline | dast | passive runtime scanning | fails on high-risk alerts |
-
-### build gates
-
-every check must pass before a pull request can be merged. the pipeline runs in stages:
-
-1. **sast stage** (parallel): semgrep + codeql scan source code
-2. **sca stage** (parallel): npm audit + dependency-check scan dependencies
-3. **secrets stage** (parallel): gitleaks scans git history for hardcoded secrets
-4. **dast stage**: owasp zap baseline scan against running application
-5. **regression stage**: 4 vulnerability regression test suites run sequentially
-
----
-
-## quick start
-
-### prerequisites
-
-- node.js 18+
-- npm
-
-### run locally
+Prerequisites: Node.js 18+ (20 or 22 recommended) and npm. `better-sqlite3` is a native add-on; newer Node versions may require a C/C++ build toolchain if no prebuilt binary exists. Two terminals, from the repository root:
 
 ```bash
-# terminal 1 - backend
-cd backend
-npm install
-node server.js
-
-# terminal 2 - frontend
-cd frontend
-npm install
-npm run dev
+cd backend && npm ci && npm start
 ```
-
-open http://localhost:5173 in your browser.
-
-### run security scans locally
 
 ```bash
-# sast with semgrep
-semgrep --config=.semgrep/ frontend/ backend/
-
-# sast with codeql (requires codeql cli)
-codeql database create codeql-db --language=javascript
-codeql database analyze codeql-db --format=sarif-latest --output=results.sarif
-
-# sca with npm audit
-cd backend && npm audit
-cd frontend && npm audit
-
-# sca with dependency-check (requires java)
-dependency-check --scan . --format HTML --out dep-report.html
-
-# secrets scanning with gitleaks
-bash scripts/run-secrets.sh
-
-# dast with zap (requires docker)
-bash scripts/run-dast.sh
-
-# vulnerability regression tests
-bash scripts/run-vulnerability-regression.sh
+cd frontend && npm ci && npm run dev
 ```
 
-### run the full pipeline locally
+Open `http://localhost:5173`. Vite proxies `/api` to `http://localhost:3001`; the API health endpoint is `http://localhost:3001/api/health`. The backend creates `backend/notes.db` on first launch and seeds example notes only when the table is empty. The database persists between launches; keep test data disposable.
+
+To verify the UI build and the non-destructive unit tests:
 
 ```bash
-bash scripts/start-services.sh
-bash scripts/run-sast.sh
-bash scripts/run-sca.sh
-bash scripts/run-secrets.sh
-bash scripts/run-dast.sh
-bash scripts/run-vulnerability-regression.sh
+cd frontend && node --test src/notesView.test.js && npm run build
+node --test ../tests/workflow/gate.test.js
 ```
 
----
+The commands above assume the current directory is `frontend` for both lines. The `tests/vulnerability/` scripts are **not** safe read-only smoke tests: some create and delete notes, and the IDOR script updates note ID 1. Run those only against a disposable database after reviewing them.
 
-## ci/cd pipelines
+## CI and scanner behaviour
 
-### pr/push pipeline (`.github/workflows/ci-pipeline.yml`)
+`.github/workflows/ci-pipeline.yml` runs on pushes to `main`/`develop` and pull requests targeting `main`. Semgrep and CodeQL cover static analysis; npm audit and OWASP Dependency-Check inspect dependencies; Gitleaks scans history; ZAP baseline tests the running Vite app; then vulnerability scripts run after SAST/SCA. Check each job's log and uploaded artifacts for findings. The final gate checks actual job results instead of printing unconditional success.
 
-runs on every push and pull request:
-1. install dependencies
-2. sast: semgrep scan
-3. sast: codeql analysis
-4. sca: npm audit
-5. sca: owasp dependency-check
-6. secrets: gitleaks history scan
-7. start services
-8. dast: zap baseline scan
-9. vulnerability regression tests
-10. final build gate
+`.github/workflows/nightly-dast.yml` is currently **commented out** and does not schedule a scan. Local helpers in `scripts/` are demonstrations, **not equivalent to CI gates**: several suppress scanner exit codes and may report completion despite findings. For meaningful pass/fail status, inspect the scanner output or run the underlying tool directly. ZAP's helper requires Docker; CodeQL, Semgrep and Dependency-Check require their own CLIs. The UI and unit tests do not need those tools.
 
-### nightly pipeline (`.github/workflows/nightly-dast.yml`)
+## Repository map
 
-runs daily at 2:00 am utc:
-1. full zap active scan (deep, aggressive)
-2. sarif report generation
-3. no build gating (informational)
+- `frontend/` — app UI, Vite config and notes view tests.
+- `backend/` — Express routes, SQLite setup and synthetic secret specimens.
+- `.github/workflows/` — CI pipeline and disabled nightly DAST example.
+- `.semgrep/`, `.zap/`, `.gitleaks/`, `.dependency-check/` — scanner rules and suppressions.
+- `tests/vulnerability/` — invasive security exercise scripts; `tests/workflow/` — CI gate assertion.
+- `docs/deepdive.md`, `docs/security-comparison.md` — deeper design and testing notes.
+- `scripts/` — local scanner and service helpers; review side effects before use.
 
----
-
-## docs
-
-| file | description |
-|---|---|
-| docs/deepdive.md | full project deepdive covering all 25 files |
-| docs/security-comparison.md | sast vs dast coverage and false positive analysis |
-
----
-
-## key design decisions
-
-- **sqlite instead of postgres** for zero-config setup
-- **better-sqlite3 instead of an orm** to expose clear sqli patterns for sast detection
-- **react 17** because it has known cves for sca demonstration
-- **zap baseline on pr, full scan nightly** as standard ci/cd practice
-- **semgrep + codeql together** for both fast feedback and deep analysis
-- **vulnerability regression tests** as a second defense layer after sast/dast/sca
-- **fabricated credentials seeded in the repo** so the gitleaks gate always demonstrates real detection
-- **express@4.17.1 and lodash@4.17.20 intentionally kept old** for sca tool detection
-
----
-
-## license
-
-mit
+This is an educational lab. Fixing an intentional vulnerability changes the exercise and may alter expected scan results; ordinary UI and pipeline correctness bugs are separate from that teaching surface.
